@@ -8,7 +8,7 @@ async function main() {
   const blueprintSlug = "DimiDumo/SuccinctZKResidencyInvite@v3";
   const blueprint = await sdk.getBlueprint(blueprintSlug);
 
-  // 保存済みファイルをロード
+  // 検証に必要な情報の読み出し（通常は証明者が検証者に提示する）
   const proofDataJSON = await fs.readFile("./proofData.json", "utf-8");
   const publicOutputsJSON = await fs.readFile("./publicOutputs.json", "utf-8");
 
