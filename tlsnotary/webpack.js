@@ -7,19 +7,6 @@ const ASSET_PATH = process.env.ASSET_PATH || "/";
 
 var alias = {};
 
-var fileExtensions = [
-  "jpg",
-  "jpeg",
-  "png",
-  "gif",
-  "eot",
-  "otf",
-  "svg",
-  "ttf",
-  "woff",
-  "woff2",
-];
-
 var options = {
   ignoreWarnings: [
     /Circular dependency between chunks with runtime/,
@@ -27,7 +14,7 @@ var options = {
   ],
   mode: "development",
   entry: {
-    app: path.join(__dirname, "src", "app.tsx"),
+    app: path.join(__dirname, "app.tsx"),
   },
   output: {
     filename: "[name].bundle.js",
@@ -37,16 +24,6 @@ var options = {
   },
   module: {
     rules: [
-      {
-        test: new RegExp(".(" + fileExtensions.join("|") + ")$"),
-        type: "asset/resource",
-        exclude: /node_modules/,
-      },
-      {
-        test: /\.html$/,
-        loader: "html-loader",
-        exclude: /node_modules/,
-      },
       {
         test: /\.(ts|tsx)$/,
         exclude: /node_modules/,
@@ -71,36 +48,11 @@ var options = {
         ],
         exclude: /node_modules/,
       },
-      {
-        // look for .css or .scss files
-        test: /\.(css|scss)$/,
-        // in the `web` directory
-        use: [
-          {
-            loader: "style-loader",
-          },
-          {
-            loader: "css-loader",
-            options: { importLoaders: 1 },
-          },
-          {
-            loader: "postcss-loader",
-          },
-          {
-            loader: "sass-loader",
-            options: {
-              sourceMap: true,
-            },
-          },
-        ],
-      },
     ],
   },
   resolve: {
     alias: alias,
-    extensions: fileExtensions
-      .map((extension) => "." + extension)
-      .concat([".js", ".jsx", ".ts", ".tsx", ".css"]),
+    extensions: [".js", ".jsx", ".ts", ".tsx", ".css"],
     fallback: {
       crypto: require.resolve("crypto-browserify"),
       stream: require.resolve("stream-browserify"),
