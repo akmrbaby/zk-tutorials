@@ -1,7 +1,6 @@
 import React, { ReactElement, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as Comlink from "comlink";
-import { Watch } from "react-loader-spinner";
 import {
   Prover as TProver,
   Presentation as TPresentation,
@@ -25,8 +24,6 @@ root.render(<App />);
 const notaryUrl = "https://notary.pse.dev/v0.1.0-alpha.12";
 const websocketProxyUrl =
   "wss://notary.pse.dev/proxy?token=raw.githubusercontent.com";
-const loggingLevel = "Info"; // https://github.com/tlsnotary/tlsn/blob/main/crates/wasm/src/log.rs#L8
-
 const serverUrl =
   "https://raw.githubusercontent.com/tlsnotary/tlsn/refs/tags/v0.1.0-alpha.12/crates/server-fixture/server/src/data/1kb.json";
 const serverDns = "raw.githubusercontent.com";
@@ -40,7 +37,7 @@ function App(): ReactElement {
 
   useEffect(() => {
     (async () => {
-      await init({ loggingLevel: loggingLevel });
+      await init({ loggingLevel: "Info" });
       setInitialized(true);
     })();
   }, []);
@@ -61,10 +58,6 @@ function App(): ReactElement {
       headers: {
         "Content-Type": "application/json",
         secret: "test_secret",
-      },
-      body: {
-        hello: "world",
-        one: 1,
       },
     });
     console.log(resp);
@@ -170,20 +163,6 @@ function App(): ReactElement {
           Start Demo
         </button>
       </div>
-      {processing && (
-        <div className="mt-6 flex justify-center items-center">
-          <Watch
-            visible={true}
-            height="40"
-            width="40"
-            radius="48"
-            color="#1E293B"
-            ariaLabel="watch-loading"
-            wrapperStyle={{}}
-            wrapperClass=""
-          />
-        </div>
-      )}
       <div className="flex flex-col gap-6 w-full max-w-4xl">
         <div className="flex-1 bg-slate-50 border border-slate-200 rounded p-4">
           <b className="text-slate-600">Proof: </b>
@@ -192,9 +171,6 @@ function App(): ReactElement {
           ) : !presentationJSON ? (
             <div className="flex flex-col items-start space-y-2">
               <span>Proving data from {serverDns}...</span>
-              <span className="text-slate-500">
-                Open <i>Developer tools</i> to follow progress
-              </span>
             </div>
           ) : (
             <div>

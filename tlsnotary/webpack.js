@@ -3,10 +3,6 @@ var webpack = require("webpack"),
   CopyWebpackPlugin = require("copy-webpack-plugin"),
   HtmlWebpackPlugin = require("html-webpack-plugin");
 
-const ASSET_PATH = process.env.ASSET_PATH || "/";
-
-var alias = {};
-
 var options = {
   ignoreWarnings: [
     /Circular dependency between chunks with runtime/,
@@ -20,7 +16,7 @@ var options = {
     filename: "[name].bundle.js",
     path: path.resolve(__dirname, "build"),
     clean: true,
-    publicPath: ASSET_PATH,
+    publicPath: "/",
   },
   module: {
     rules: [
@@ -36,28 +32,10 @@ var options = {
           },
         ],
       },
-      {
-        test: /\.(js|jsx)$/,
-        use: [
-          {
-            loader: "source-map-loader",
-          },
-          {
-            loader: require.resolve("babel-loader"),
-          },
-        ],
-        exclude: /node_modules/,
-      },
     ],
   },
   resolve: {
-    alias: alias,
-    extensions: [".js", ".jsx", ".ts", ".tsx", ".css"],
-    fallback: {
-      crypto: require.resolve("crypto-browserify"),
-      stream: require.resolve("stream-browserify"),
-      vm: require.resolve("vm-browserify"),
-    },
+    extensions: [".js", ".jsx", ".ts", ".tsx"],
   },
   plugins: [
     new CopyWebpackPlugin({
@@ -73,9 +51,6 @@ var options = {
       template: path.join(__dirname, "index.ejs"),
       filename: "index.html",
       cache: false,
-    }),
-    new webpack.ProvidePlugin({
-      process: "process/browser",
     }),
     new webpack.ProvidePlugin({
       Buffer: ["buffer", "Buffer"],
