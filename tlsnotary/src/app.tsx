@@ -48,7 +48,6 @@ function App(): ReactElement {
   const onClick = useCallback(async () => {
     setProcessing(true);
     const notary = NotaryServer.from(notaryUrl);
-    console.time("submit");
     const prover = (await new Prover({
       serverDns: serverDns,
       maxRecvData: 2048,
@@ -68,16 +67,11 @@ function App(): ReactElement {
         one: 1,
       },
     });
-
-    console.timeEnd("submit");
     console.log(resp);
 
-    console.time("transcript");
     const transcript = await prover.transcript();
     const { sent, recv } = transcript;
     console.log(new Transcript({ sent, recv }));
-    console.timeEnd("transcript");
-    console.time("commit");
 
     const {
       info: recvInfo,
@@ -115,8 +109,6 @@ function App(): ReactElement {
       ],
     };
     const notarizationOutputs = await prover.notarize(commit);
-    console.timeEnd("commit");
-    console.time("proof");
 
     const presentation = (await new Presentation({
       attestationHex: notarizationOutputs.attestation,
@@ -128,7 +120,6 @@ function App(): ReactElement {
 
     console.log(await presentation.serialize());
     setPresentationJSON(await presentation.json());
-    console.timeEnd("proof");
   }, [setPresentationJSON, setProcessing]);
 
   useEffect(() => {
@@ -159,50 +150,25 @@ function App(): ReactElement {
   }, [presentationJSON, setResult]);
 
   return (
-    <div className="bg-slate-100 min-h-screen p-6 text-slate-800 flex flex-col items-center">
-      <h1 className="text-2xl font-bold mb-6 text-slate-700">
-        TLSNotary React TypeScript Demo{" "}
-      </h1>
-      <div className="mb-4 text-base font-light max-w-2xl">
-        <table className="table-auto w-full mt-4">
-          <thead>
-            <tr>
-              <th className="px-4 py-2 text-left">Demo Settings</th>
-              <th className="px-4 py-2 text-left">URL</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="border px-4 py-2">Server</td>
-              <td className="border px-4 py-2">{serverUrl}</td>
-            </tr>
-            <tr>
-              <td className="border px-4 py-2">Notary Server</td>
-              <td className="border px-4 py-2">{notaryUrl}</td>
-            </tr>
-            <tr>
-              <td className="border px-4 py-2">WebSocket Proxy</td>
-              <td className="border px-4 py-2">{websocketProxyUrl}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div>
+      <h1>TLSNotary Demo </h1>
+      <div>Server: {serverUrl}</div>
+      <div>Notary Server: {notaryUrl}</div>
+      <div>WebSocket Proxy: {websocketProxyUrl}</div>
 
-      <div className="mb-4">
-        <div className="flex justify-center gap-4">
-          <button
-            onClick={!processing ? onClick : undefined}
-            disabled={processing || !initialized}
-            className={`px-4 py-2 rounded-md text-white shadow-md font-semibold
+      <div>
+        <button
+          onClick={!processing ? onClick : undefined}
+          disabled={processing || !initialized}
+          className={`px-4 py-2 rounded-md text-white shadow-md font-semibold
         ${
           processing || !initialized
             ? "bg-slate-400 cursor-not-allowed"
             : "bg-slate-600 hover:bg-slate-700"
         }`}
-          >
-            Start Demo
-          </button>
-        </div>
+        >
+          Start Demo
+        </button>
       </div>
       {processing && (
         <div className="mt-6 flex justify-center items-center">
@@ -231,10 +197,8 @@ function App(): ReactElement {
               </span>
             </div>
           ) : (
-            <details className="bg-slate-50 border border-slate-200 rounded p-2">
-              <summary className="cursor-pointer text-slate-600">
-                View Proof
-              </summary>
+            <div>
+              <b className="text-slate-600">View Proof: </b>
               <pre
                 data-testid="proof-data"
                 className="mt-2 p-2 bg-slate-100 rounded text-sm text-slate-800 overflow-auto"
@@ -242,7 +206,7 @@ function App(): ReactElement {
               >
                 {JSON.stringify(presentationJSON, null, 2)}
               </pre>
-            </details>
+            </div>
           )}
         </div>
         <div className="flex-1 bg-slate-50 border border-slate-200 rounded p-4">
