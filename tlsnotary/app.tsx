@@ -1,4 +1,4 @@
-import React, { ReactElement, useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as Comlink from "comlink";
 import {
@@ -12,13 +12,13 @@ import {
 } from "tlsn-js";
 import { PresentationJSON } from "tlsn-js/build/types";
 import { HTTPParser } from "http-parser-js";
+
 const { init, Prover, Presentation }: any = Comlink.wrap(
   new Worker(new URL("./worker.ts", import.meta.url))
 );
 
 const container = document.getElementById("root");
 const root = createRoot(container!);
-
 root.render(<App />);
 
 const notaryUrl = "https://notary.pse.dev/v0.1.0-alpha.12";
@@ -28,16 +28,16 @@ const serverUrl =
   "https://raw.githubusercontent.com/tlsnotary/tlsn/refs/tags/v0.1.0-alpha.12/crates/server-fixture/server/src/data/1kb.json";
 const serverDns = "raw.githubusercontent.com";
 
-function App(): ReactElement {
+function App() {
   const [initialized, setInitialized] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [result, setResult] = useState<any | null>(null);
   const [presentationJSON, setPresentationJSON] =
-    useState<null | PresentationJSON>(null);
+    useState<PresentationJSON | null>(null);
+  const [result, setResult] = useState<any | null>(null);
 
   useEffect(() => {
     (async () => {
-      await init({ loggingLevel: "Info" });
+      await init();
       setInitialized(true);
     })();
   }, []);
@@ -49,29 +49,20 @@ function App(): ReactElement {
       serverDns: serverDns,
       maxRecvData: 2048,
     })) as TProver;
-
     await prover.setup(await notary.sessionUrl());
 
-    const resp = await prover.sendRequest(websocketProxyUrl, {
+    await prover.sendRequest(websocketProxyUrl, {
       url: serverUrl,
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        secret: "test_secret",
-      },
+      headers: { "Content-Type": "application/json", secret: "test_secret" },
     });
-    console.log(resp);
 
-    const transcript = await prover.transcript();
-    const { sent, recv } = transcript;
-    console.log(new Transcript({ sent, recv }));
-
+    const { sent, recv } = await prover.transcript();
     const {
       info: recvInfo,
       headers: recvHeaders,
       body: recvBody,
     } = parseHttpMessage(Buffer.from(recv), "response");
-
     const body = JSON.parse(recvBody[0].toString());
 
     const commit: Commit = {
@@ -101,8 +92,8 @@ function App(): ReactElement {
         ),
       ],
     };
-    const notarizationOutputs = await prover.notarize(commit);
 
+    const notarizationOutputs = await prover.notarize(commit);
     const presentation = (await new Presentation({
       attestationHex: notarizationOutputs.attestation,
       secretsHex: notarizationOutputs.secrets,
@@ -111,97 +102,72 @@ function App(): ReactElement {
       reveal: { ...commit, server_identity: false },
     })) as TPresentation;
 
-    console.log(await presentation.serialize());
     setPresentationJSON(await presentation.json());
-  }, [setPresentationJSON, setProcessing]);
+  }, []);
 
   useEffect(() => {
     (async () => {
-      if (presentationJSON) {
-        const proof = (await new Presentation(
-          presentationJSON.data
-        )) as TPresentation;
-        const notary = NotaryServer.from(notaryUrl);
-        const notaryKey = await notary.publicKey("hex");
-        const verifierOutput = await proof.verify();
-        const transcript = new Transcript({
-          sent: verifierOutput.transcript?.sent || [],
-          recv: verifierOutput.transcript?.recv || [],
-        });
-        const vk = await proof.verifyingKey();
-        setResult({
-          time: verifierOutput.connection_info.time,
-          verifyingKey: Buffer.from(vk.data).toString("hex"),
-          notaryKey: notaryKey,
-          serverName: verifierOutput.server_name,
-          sent: transcript.sent(),
-          recv: transcript.recv(),
-        });
-        setProcessing(false);
-      }
+      if (!presentationJSON) return;
+      const proof = (await new Presentation(
+        presentationJSON.data
+      )) as TPresentation;
+      const notary = NotaryServer.from(notaryUrl);
+      const notaryKey = await notary.publicKey("hex");
+      const verifierOutput = await proof.verify();
+      const transcript = new Transcript({
+        sent: verifierOutput.transcript?.sent || [],
+        recv: verifierOutput.transcript?.recv || [],
+      });
+      const vk = await proof.verifyingKey();
+      setResult({
+        time: verifierOutput.connection_info.time,
+        verifyingKey: Buffer.from(vk.data).toString("hex"),
+        notaryKey: notaryKey,
+        serverName: verifierOutput.server_name,
+        sent: transcript.sent(),
+        recv: transcript.recv(),
+      });
+      setProcessing(false);
     })();
-  }, [presentationJSON, setResult]);
+  }, [presentationJSON]);
 
   return (
-    <div>
-      <h1>TLSNotary Demo </h1>
+    <div style={{ fontFamily: "sans-serif", padding: 16 }}>
+      <h1>TLSNotary Demo</h1>
       <div>Server: {serverUrl}</div>
       <div>Notary Server: {notaryUrl}</div>
       <div>WebSocket Proxy: {websocketProxyUrl}</div>
 
-      <div>
-        <button
-          onClick={!processing ? onClick : undefined}
-          disabled={processing || !initialized}
-          className={`px-4 py-2 rounded-md text-white shadow-md font-semibold
-        ${
-          processing || !initialized
-            ? "bg-slate-400 cursor-not-allowed"
-            : "bg-slate-600 hover:bg-slate-700"
-        }`}
-        >
-          Start Demo
-        </button>
-      </div>
-      <div className="flex flex-col gap-6 w-full max-w-4xl">
-        <div className="flex-1 bg-slate-50 border border-slate-200 rounded p-4">
-          <b className="text-slate-600">Proof: </b>
-          {!processing && !presentationJSON ? (
-            <i className="text-slate-500">not started</i>
-          ) : !presentationJSON ? (
-            <div className="flex flex-col items-start space-y-2">
-              <span>Proving data from {serverDns}...</span>
-            </div>
-          ) : (
-            <div>
-              <b className="text-slate-600">View Proof: </b>
-              <pre
-                data-testid="proof-data"
-                className="mt-2 p-2 bg-slate-100 rounded text-sm text-slate-800 overflow-auto"
-                style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
-              >
-                {JSON.stringify(presentationJSON, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-        <div className="flex-1 bg-slate-50 border border-slate-200 rounded p-4">
-          <b className="text-slate-600">Verification: </b>
-          {!presentationJSON ? (
-            <i className="text-slate-500">not started</i>
-          ) : !result ? (
-            <i className="text-slate-500">verifying</i>
-          ) : (
-            <pre
-              data-testid="verify-data"
-              className="mt-2 p-2 bg-slate-100 rounded text-sm text-slate-800 overflow-auto"
-              style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
-            >
-              {JSON.stringify(result, null, 2)}
-            </pre>
-          )}
-        </div>
-      </div>
+      <button
+        onClick={!processing ? onClick : undefined}
+        disabled={processing || !initialized}
+      >
+        {processing ? "Working…" : "Start Demo"}
+      </button>
+
+      <section>
+        <b>Proof:</b>
+        {!processing && !presentationJSON ? (
+          <i> not started</i>
+        ) : !presentationJSON ? (
+          <span> Proving data from {serverDns}…</span>
+        ) : (
+          <pre data-testid="proof-data">
+            {JSON.stringify(presentationJSON, null, 2)}
+          </pre>
+        )}
+      </section>
+
+      <section>
+        <b>Verification:</b>
+        {!presentationJSON ? (
+          <i> not started</i>
+        ) : !result ? (
+          <i> verifying</i>
+        ) : (
+          <pre data-testid="verify-data">{JSON.stringify(result, null, 2)}</pre>
+        )}
+      </section>
     </div>
   );
 }
@@ -213,27 +179,23 @@ function parseHttpMessage(buffer: Buffer, type: "request" | "response") {
   const body: Buffer[] = [];
   let complete = false;
   let headers: string[] = [];
-
   parser.onBody = (t) => {
     body.push(t);
   };
-
   parser.onHeadersComplete = (res) => {
     headers = res.headers;
   };
-
   parser.onMessageComplete = () => {
     complete = true;
   };
-
   parser.execute(buffer);
   parser.finish();
-
   if (!complete) throw new Error(`Could not parse ${type.toUpperCase()}`);
-
   return {
     info: buffer.toString("utf-8").split("\r\n")[0] + "\r\n",
     headers,
     body,
   };
 }
+
+export default App;

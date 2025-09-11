@@ -4,10 +4,6 @@ var webpack = require("webpack"),
   HtmlWebpackPlugin = require("html-webpack-plugin");
 
 var options = {
-  ignoreWarnings: [
-    /Circular dependency between chunks with runtime/,
-    /ResizeObserver loop completed with undelivered notifications/,
-  ],
   mode: "development",
   entry: {
     app: path.join(__dirname, "app.tsx"),
@@ -48,13 +44,22 @@ var options = {
       ],
     }),
     new HtmlWebpackPlugin({
-      template: path.join(__dirname, "index.ejs"),
-      filename: "index.html",
-      cache: false,
+      templateContent: () =>
+        `
+        <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8" />
+              <title>TLSNotary Demo</title>
+              <meta name="viewport" content="width=device-width,initial-scale=1" />
+            </head>
+            <body>
+              <div id="root"></div>
+            </body>
+          </html>
+      `.trim(),
     }),
-    new webpack.ProvidePlugin({
-      Buffer: ["buffer", "Buffer"],
-    }),
+    new webpack.ProvidePlugin({ Buffer: ["buffer", "Buffer"] }),
   ].filter(Boolean),
 
   devServer: {
