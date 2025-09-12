@@ -13,14 +13,12 @@ import {
 import { PresentationJSON } from "tlsn-js/build/types";
 import { HTTPParser } from "http-parser-js";
 
+// workerの設定
 const { init, Prover, Presentation }: any = Comlink.wrap(
   new Worker(new URL("./worker.ts", import.meta.url))
 );
 
-const container = document.getElementById("root");
-const root = createRoot(container!);
-root.render(<App />);
-
+// Notaryサーバーと対象サーバーの設定
 const notaryUrl = "https://notary.pse.dev/v0.1.0-alpha.12";
 const websocketProxyUrl =
   "wss://notary.pse.dev/proxy?token=raw.githubusercontent.com";
@@ -45,18 +43,20 @@ function App() {
   const onClick = useCallback(async () => {
     setProcessing(true);
     const notary = NotaryServer.from(notaryUrl);
+
+    // Prover によるリクエスト送信: ProverがNotaryサーバーと通信してセッションを確立し、リクエスト対象サーバーにGETリクエストを送信
     const prover = (await new Prover({
       serverDns: serverDns,
       maxRecvData: 2048,
     })) as TProver;
     await prover.setup(await notary.sessionUrl());
-
     await prover.sendRequest(websocketProxyUrl, {
       url: serverUrl,
       method: "GET",
       headers: { "Content-Type": "application/json", secret: "test_secret" },
     });
 
+    // Transcript(通信ログ)とCommit（証明対象）の作成
     const { sent, recv } = await prover.transcript();
     const {
       info: recvInfo,
@@ -93,6 +93,7 @@ function App() {
       ],
     };
 
+    // Notarization (公証): Notaryサーバーから証明書をもらう
     const notarizationOutputs = await prover.notarize(commit);
     const presentation = (await new Presentation({
       attestationHex: notarizationOutputs.attestation,
@@ -108,6 +109,8 @@ function App() {
   useEffect(() => {
     (async () => {
       if (!presentationJSON) return;
+
+      // Verification (検証): Notary の公開鍵や通信ログから、改ざんされていないことを確認する
       const proof = (await new Presentation(
         presentationJSON.data
       )) as TPresentation;
@@ -197,5 +200,9 @@ function parseHttpMessage(buffer: Buffer, type: "request" | "response") {
     body,
   };
 }
+
+const container = document.getElementById("root");
+const root = createRoot(container!);
+root.render(<App />);
 
 export default App;
